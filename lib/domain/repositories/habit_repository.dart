@@ -1,0 +1,18 @@
+import '../models/habit.dart';
+
+abstract interface class HabitRepository {
+  /// Non-deleted, non-archived habits, oldest first.
+  Stream<List<Habit>> watchActive();
+
+  Future<Habit?> getById(String id);
+
+  Future<void> create(Habit habit);
+  Future<void> update(Habit habit);
+
+  Future<void> archive(String id);
+  Future<void> unarchive(String id);
+
+  /// Soft delete (tombstone). Entries are kept so the delete can be undone.
+  Future<void> delete(String id);
+  Future<void> restore(String id);
+}
