@@ -1,4 +1,5 @@
 # HabitFlow
+![CI](https://github.com/TOMAR-USERNAME/habitflow/actions/workflows/ci.yml/badge.svg)
 
 A modern, **offline-first habit tracker** for Android and iOS, built with
 Flutter. Track simple check-off habits and counted goals ("8 glasses of
