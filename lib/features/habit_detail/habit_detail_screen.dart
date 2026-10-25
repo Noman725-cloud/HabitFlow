@@ -9,6 +9,7 @@ import '../../core/habit_icons.dart';
 import '../../core/schedule_label.dart';
 import '../../core/widgets/day_cell.dart';
 import '../../core/widgets/month_grid.dart';
+import '../../core/widgets/stat_card.dart';
 import '../../domain/models/habit.dart';
 import '../../domain/services/day_status.dart';
 import '../../domain/services/entry_index.dart';
@@ -200,7 +201,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
           Row(
             children: [
               Expanded(
-                child: _StatCard(
+                child: StatCard(
                   label: 'Current streak',
                   value: _days(overview.currentStreak),
                   icon: Icons.local_fire_department,
@@ -208,7 +209,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _StatCard(
+                child: StatCard(
                   label: 'Best streak',
                   value: _days(overview.bestStreak),
                   icon: Icons.emoji_events_outlined,
@@ -220,7 +221,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
           Row(
             children: [
               Expanded(
-                child: _StatCard(
+                child: StatCard(
                   label: 'Completion rate',
                   value: '${(overview.completionRate * 100).round()}%',
                   icon: Icons.percent,
@@ -228,7 +229,7 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _StatCard(
+                child: StatCard(
                   label: 'Days completed',
                   value: '${overview.totalMet}',
                   icon: Icons.check_circle_outline,
@@ -261,35 +262,4 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
   }
 
   String _days(int n) => '$n ${n == 1 ? 'day' : 'days'}';
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: theme.colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(value, style: theme.textTheme.headlineSmall),
-            Text(label, style: theme.textTheme.bodySmall),
-          ],
-        ),
-      ),
-    );
-  }
 }

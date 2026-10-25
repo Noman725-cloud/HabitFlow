@@ -56,12 +56,20 @@ class WeeklyStats {
   int get met => days.fold(0, (s, d) => s + d.met);
   double get completionRate => scheduled == 0 ? 0 : met / scheduled;
 
-  /// Day with the highest completion rate (earliest wins ties); null if
-  /// nothing was due this week.
+  /// Mean progress across every due goal this week (0..1), so partial effort
+  /// counts even when the goal wasn't met.
+  double get averageProgress {
+    final total = scheduled;
+    if (total == 0) return 0;
+    return days.fold(0.0, (s, d) => s + d.progress * d.scheduled) / total;
+  }
+
+  /// Day with the highest completion rate (earliest wins ties). Null if
+  /// nothing was due, or if no goal was met at all (a "best" of 0% is noise).
   DayStats? get bestDay {
     DayStats? best;
     for (final d in days) {
-      if (d.scheduled == 0) continue;
+      if (d.scheduled == 0 || d.met == 0) continue;
       if (best == null || d.completionRate > best.completionRate) best = d;
     }
     return best;

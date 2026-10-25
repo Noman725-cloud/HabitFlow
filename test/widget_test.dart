@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:habitflow/app/app.dart';
 import 'package:habitflow/app/providers.dart';
 import 'package:habitflow/core/date_utils.dart';
+import 'package:habitflow/domain/models/entry.dart';
 import 'package:habitflow/domain/models/habit.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -122,6 +123,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(DateFormat.yMMMM().format(now)), findsOneWidget);
 
+    // The test screen is small; scroll today's cell into view first.
     await tester.ensureVisible(find.text('${now.day}'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('${now.day}'));
@@ -154,6 +156,84 @@ void main() {
     expect(find.text('Current streak'), findsOneWidget);
     expect(find.text('Best streak'), findsOneWidget);
     expect(find.text('Completion rate'), findsOneWidget);
+    await _teardown(tester);
+  });
+
+  testWidgets('statistics tab shows the chart and per-habit breakdown',
+      (tester) async {
+    // Tall viewport so the whole list is built.
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1600);
+    addTearDown(tester.view.reset);
+
+    final now = DateTime.now();
+    final habit = makeHabit(
+      id: 'run',
+      createdAt: now.subtract(const Duration(days: 40)),
+    );
+    final entry = Entry(
+      id: 'e1',
+      habitId: 'run',
+      date: toDateKey(now),
+      value: 1,
+      target: 1,
+      updatedAt: now,
+    );
+    await _pumpApp(
+      tester,
+      habits: [habit],
+      entryRepo: FakeEntryRepository([entry]),
+    );
+
+    await tester.tap(find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('Stats'),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Goals met per day'), findsOneWidget);
+    expect(find.text('By habit'), findsOneWidget);
+    expect(find.text('Habit run'), findsOneWidget);
+    await _teardown(tester);
+  });
+
+  testWidgets('statistics week navigation works', (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(800, 1600);
+    addTearDown(tester.view.reset);
+
+    await _pumpApp(tester, habits: [
+      makeHabit(
+        id: 'run',
+        createdAt: DateTime.now().subtract(const Duration(days: 40)),
+      ),
+    ]);
+    await tester.tap(find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('Stats'),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('This week'), findsNothing);
+    await tester.tap(find.byTooltip('Previous week'));
+    await tester.pumpAndSettle();
+    expect(find.text('This week'), findsOneWidget);
+
+    await tester.tap(find.text('This week'));
+    await tester.pumpAndSettle();
+    expect(find.text('This week'), findsNothing);
+    await _teardown(tester);
+  });
+
+  testWidgets('statistics shows a hint when there are no habits',
+      (tester) async {
+    await _pumpApp(tester);
+    await tester.tap(find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('Stats'),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Create a habit to see your statistics.'), findsOneWidget);
     await _teardown(tester);
   });
 }

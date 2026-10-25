@@ -139,4 +139,19 @@ void main() {
       expect(days, hasLength(28));
     });
   });
+
+  group('WeeklyStats extras', () {
+    test('averageProgress weights days by how many goals were due', () {
+      // Mon 1.0 x2, Tue 0.75 x2, Wed-Sat 0 x2 each => 3.5 / 12
+      expect(weekly().averageProgress, closeTo(3.5 / 12, 1e-9));
+    });
+
+    test('averageProgress is 0 when nothing is due', () {
+      expect(weekly(habits: [], es: []).averageProgress, 0);
+    });
+
+    test('bestDay is null when nothing was met', () {
+      expect(weekly(es: []).bestDay, isNull);
+    });
+  });
 }

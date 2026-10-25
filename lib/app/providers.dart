@@ -153,3 +153,11 @@ class WeekStartNotifier extends Notifier<int> {
 
 final weekStartProvider =
     NotifierProvider<WeekStartNotifier, int>(WeekStartNotifier.new);
+
+/// Entries for the 7 days starting at [weekStart] (a local midnight).
+final entriesForWeekProvider =
+    StreamProvider.family<List<Entry>, DateTime>((ref, weekStart) {
+  return ref
+      .watch(entryRepositoryProvider)
+      .watchRange(toDateKey(weekStart), toDateKey(addDays(weekStart, 6)));
+});
