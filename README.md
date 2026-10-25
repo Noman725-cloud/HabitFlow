@@ -4,6 +4,7 @@
 A modern, **offline-first habit tracker** for Android and iOS, built with
 Flutter. Track simple check-off habits and counted goals ("8 glasses of
 water"), keep streaks, browse your history, and see weekly statistics.
+**[Download the Android APK](https://github.com/Noman725-cloud/HabitFlow/releases/latest)**
 
 <p>
   <img src="docs/screenshots/today.png" width="200" alt="Today screen" />
