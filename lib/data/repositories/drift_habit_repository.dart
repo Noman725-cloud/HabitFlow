@@ -22,6 +22,22 @@ class DriftHabitRepository implements HabitRepository {
   }
 
   @override
+  Stream<List<Habit>> watchAll() {
+    final query = _db.select(_db.habits)
+      ..where((t) => t.deletedAt.isNull())
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+    return query.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+  }
+
+  @override
+  Stream<List<Habit>> watchArchived() {
+    final query = _db.select(_db.habits)
+      ..where((t) => t.deletedAt.isNull() & t.archivedAt.isNotNull())
+      ..orderBy([(t) => OrderingTerm.desc(t.archivedAt)]);
+    return query.watch().map((rows) => rows.map((r) => r.toDomain()).toList());
+  }
+
+  @override
   Future<Habit?> getById(String id) async {
     final row = await (_db.select(_db.habits)..where((t) => t.id.equals(id)))
         .getSingleOrNull();

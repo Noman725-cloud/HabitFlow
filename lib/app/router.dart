@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/archived/archived_screen.dart';
 import '../features/calendar/calendar_screen.dart';
+import '../features/habit_detail/habit_detail_screen.dart';
 import '../features/habit_form/habit_form_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/stats/stats_screen.dart';
@@ -55,6 +57,17 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) =>
             HabitFormScreen(habitId: state.pathParameters['id']),
+      ),
+      GoRoute(
+        path: '/habit/:id',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) =>
+            HabitDetailScreen(habitId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/archived',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const ArchivedScreen(),
       ),
     ],
   );

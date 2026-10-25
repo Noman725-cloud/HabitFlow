@@ -4,6 +4,12 @@ abstract interface class HabitRepository {
   /// Non-deleted, non-archived habits, oldest first.
   Stream<List<Habit>> watchActive();
 
+  /// Every non-deleted habit INCLUDING archived ones (needed for history).
+  Stream<List<Habit>> watchAll();
+
+  /// Archived, non-deleted habits, most recently archived first.
+  Stream<List<Habit>> watchArchived();
+
   Future<Habit?> getById(String id);
 
   Future<void> create(Habit habit);

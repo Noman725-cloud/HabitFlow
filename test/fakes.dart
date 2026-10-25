@@ -17,6 +17,15 @@ class FakeHabitRepository implements HabitRepository {
       );
 
   @override
+  Stream<List<Habit>> watchAll() =>
+      Stream.value(habits.where((h) => !h.isDeleted).toList());
+
+  @override
+  Stream<List<Habit>> watchArchived() => Stream.value(
+        habits.where((h) => !h.isDeleted && h.isArchived).toList(),
+      );
+
+  @override
   Future<Habit?> getById(String id) async {
     for (final h in habits) {
       if (h.id == id) return h;

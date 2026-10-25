@@ -9,60 +9,65 @@ import '../../core/habit_icons.dart';
 import '../../domain/models/entry.dart';
 import '../../domain/models/habit.dart';
 import '../../domain/services/streak_calculator.dart';
+import '../shared/habit_actions.dart';
 
-enum _TileAction { edit, delete }
+enum _TileAction { details, edit, archive, delete }
 
-/// One habit on the Today screen.
-/// Check habits: tap the tile to toggle. Counted habits: +/- buttons, and
-/// long-press to type an exact value.
+/// One habit for one day (defaults to today).
+///
+/// Check habits: tap toggles, long-press opens details.
+/// Counted habits: +/- buttons, tap opens details, long-press types an exact
+/// value. In the day-editor sheet ([showMenu] false) there is no navigation.
 class HabitTile extends ConsumerWidget {
-  const HabitTile({super.key, required this.habit, required this.today});
+  const HabitTile({
+    super.key,
+    required this.habit,
+    required this.today,
+    this.date,
+    this.showMenu = true,
+  });
 
   final Habit habit;
   final DateTime today;
 
-  Future<void> _setValue(WidgetRef ref, int value) {
+  /// The day being shown/edited; null means [today].
+  final DateTime? date;
+  final bool showMenu;
+
+  Future<void> _setValue(WidgetRef ref, DateTime day, int value) {
     return ref.read(entryRepositoryProvider).setValue(
           habit: habit,
-          date: toDateKey(today),
+          date: toDateKey(day),
           value: value,
         );
-  }
-
-  Future<void> _delete(BuildContext context, WidgetRef ref) async {
-    final repo = ref.read(habitRepositoryProvider);
-    final messenger = ScaffoldMessenger.of(context);
-    await repo.delete(habit.id);
-    messenger.clearSnackBars();
-    messenger.showSnackBar(SnackBar(
-      content: Text('"${habit.name}" deleted'),
-      action: SnackBarAction(
-        label: 'Undo',
-        onPressed: () => repo.restore(habit.id),
-      ),
-    ));
   }
 
   Future<void> _enterExact(
     BuildContext context,
     WidgetRef ref,
+    DateTime day,
     int current,
   ) async {
     final value = await showDialog<int>(
       context: context,
       builder: (_) => _ExactValueDialog(habit: habit, initial: current),
     );
-    if (value != null) await _setValue(ref, value);
+    if (value != null) await _setValue(ref, day, value);
   }
+
+  void _openDetails(BuildContext context) =>
+      context.push('/habit/${habit.id}');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final day = date ?? today;
+    final isToday = day == today;
     final entries = ref.watch(entriesForHabitProvider(habit.id)).orEmpty;
-    final todayKey = toDateKey(today);
+    final dayKey = toDateKey(day);
 
     Entry? entry;
     for (final e in entries) {
-      if (e.date == todayKey) entry = e;
+      if (e.date == dayKey) entry = e;
     }
     final value = entry?.value ?? 0;
     final target = entry?.target ?? habit.targetValue;
@@ -73,10 +78,10 @@ class HabitTile extends ConsumerWidget {
         .current;
 
     final color = Color(habit.colorValue);
-    final onColor = ThemeData.estimateBrightnessForColor(color) ==
-            Brightness.dark
-        ? Colors.white
-        : Colors.black;
+    final onColor =
+        ThemeData.estimateBrightnessForColor(color) == Brightness.dark
+            ? Colors.white
+            : Colors.black;
     final theme = Theme.of(context);
     final counted = habit.targetValue > 1;
 
@@ -121,16 +126,26 @@ class HabitTile extends ConsumerWidget {
 
     final subtitle = counted
         ? '$value / $target${habit.unit == null ? '' : ' ${habit.unit}'}'
-        : (met ? 'Done' : 'Tap to complete');
+        : (met ? 'Done' : (isToday ? 'Tap to complete' : 'Not done'));
+
+    VoidCallback? onTap;
+    VoidCallback? onLongPress;
+    if (counted) {
+      onTap = showMenu ? () => _openDetails(context) : null;
+      onLongPress = () => _enterExact(context, ref, day, value);
+    } else {
+      onTap = () => _setValue(ref, day, met ? 0 : 1);
+      onLongPress = showMenu ? () => _openDetails(context) : null;
+    }
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: counted ? null : () => _setValue(ref, met ? 0 : 1),
-        onLongPress: counted ? () => _enterExact(context, ref, value) : null,
+        onTap: onTap,
+        onLongPress: onLongPress,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+          padding: EdgeInsets.fromLTRB(16, 12, showMenu ? 4 : 8, 12),
           child: Row(
             children: [
               leading,
@@ -168,32 +183,45 @@ class HabitTile extends ConsumerWidget {
                   icon: const Icon(Icons.remove_circle_outline),
                   onPressed: value <= 0
                       ? null
-                      : () => _setValue(ref, value - habit.step),
+                      : () => _setValue(ref, day, value - habit.step),
                 ),
                 IconButton(
                   tooltip: 'Add ${habit.step}',
                   icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => _setValue(ref, value + habit.step),
+                  onPressed: () => _setValue(ref, day, value + habit.step),
                 ),
               ],
-              PopupMenuButton<_TileAction>(
-                tooltip: 'More options',
-                onSelected: (action) {
-                  switch (action) {
-                    case _TileAction.edit:
-                      context.push('/habit/${habit.id}/edit');
-                    case _TileAction.delete:
-                      _delete(context, ref);
-                  }
-                },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: _TileAction.edit, child: Text('Edit')),
-                  PopupMenuItem(
-                    value: _TileAction.delete,
-                    child: Text('Delete'),
-                  ),
-                ],
-              ),
+              if (showMenu)
+                PopupMenuButton<_TileAction>(
+                  tooltip: 'More options',
+                  onSelected: (action) {
+                    switch (action) {
+                      case _TileAction.details:
+                        _openDetails(context);
+                      case _TileAction.edit:
+                        context.push('/habit/${habit.id}/edit');
+                      case _TileAction.archive:
+                        archiveHabit(ref, ScaffoldMessenger.of(context), habit);
+                      case _TileAction.delete:
+                        deleteHabit(ref, ScaffoldMessenger.of(context), habit);
+                    }
+                  },
+                  itemBuilder: (_) => const [
+                    PopupMenuItem(
+                      value: _TileAction.details,
+                      child: Text('View details'),
+                    ),
+                    PopupMenuItem(value: _TileAction.edit, child: Text('Edit')),
+                    PopupMenuItem(
+                      value: _TileAction.archive,
+                      child: Text('Archive'),
+                    ),
+                    PopupMenuItem(
+                      value: _TileAction.delete,
+                      child: Text('Delete'),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -222,7 +250,8 @@ class _ExactValueDialogState extends State<_ExactValueDialog> {
     super.dispose();
   }
 
-  void _submit() => Navigator.of(context).pop(int.tryParse(_controller.text.trim()));
+  void _submit() =>
+      Navigator.of(context).pop(int.tryParse(_controller.text.trim()));
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +263,7 @@ class _ExactValueDialogState extends State<_ExactValueDialog> {
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         decoration: InputDecoration(
-          labelText: widget.habit.unit ?? 'Amount today',
+          labelText: widget.habit.unit ?? 'Amount',
           border: const OutlineInputBorder(),
         ),
         onSubmitted: (_) => _submit(),

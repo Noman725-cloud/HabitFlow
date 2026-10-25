@@ -140,6 +140,28 @@ class StatsCalculator {
     );
   }
 
+  /// One [DayStats] per day of [month] (index 0 = the 1st).
+  List<DayStats> forMonth({
+    required Iterable<Habit> habits,
+    required Iterable<Entry> entries,
+    required DateTime month,
+    required DateTime today,
+  }) {
+    final first = DateTime(month.year, month.month, 1);
+    final count = DateTime(month.year, month.month + 1, 0).day;
+    final habitList = habits.toList();
+    final entryList = entries.toList();
+    return [
+      for (var i = 0; i < count; i++)
+        forDay(
+          habits: habitList,
+          entries: entryList,
+          date: addDays(first, i),
+          today: today,
+        ),
+    ];
+  }
+
   /// Stats for a single day (used by the Today summary). Same tracking rules
   /// as [weekly].
   DayStats forDay({
@@ -170,14 +192,8 @@ class StatsCalculator {
     );
   }
 
-  bool _isTracked(Habit h, DateTime day, DateTime today) {
-    if (day.isAfter(today)) return false;
-    if (day.isBefore(dateOnly(h.createdAt))) return false;
-    if (h.archivedAt != null && !day.isBefore(dateOnly(h.archivedAt!))) {
-      return false;
-    }
-    return h.isScheduledOn(day);
-  }
+  bool _isTracked(Habit h, DateTime day, DateTime today) =>
+      !day.isAfter(today) && h.isTrackedOn(day);
 }
 
 class _Acc {

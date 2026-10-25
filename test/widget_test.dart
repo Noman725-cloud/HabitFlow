@@ -5,6 +5,7 @@ import 'package:habitflow/app/app.dart';
 import 'package:habitflow/app/providers.dart';
 import 'package:habitflow/core/date_utils.dart';
 import 'package:habitflow/domain/models/habit.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fakes.dart';
@@ -96,6 +97,63 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(entryRepo.calls.single.value, 1);
+    await _teardown(tester);
+  });
+
+  testWidgets('calendar day opens the editor and logs for that day',
+      (tester) async {
+    final entryRepo = FakeEntryRepository();
+    final now = DateTime.now();
+    await _pumpApp(
+      tester,
+      habits: [
+        makeHabit(
+          id: 'run',
+          createdAt: now.subtract(const Duration(days: 40)),
+        ),
+      ],
+      entryRepo: entryRepo,
+    );
+
+    await tester.tap(find.descendant(
+      of: find.byType(NavigationBar),
+      matching: find.text('Calendar'),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text(DateFormat.yMMMM().format(now)), findsOneWidget);
+
+    await tester.ensureVisible(find.text('${now.day}'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('${now.day}'));
+    await tester.pumpAndSettle();
+    expect(find.text('Habit run'), findsOneWidget);
+
+    await tester.tap(find.text('Habit run'));
+    await tester.pumpAndSettle();
+    expect(entryRepo.calls.single.date, toDateKey(now));
+    expect(entryRepo.calls.single.value, 1);
+    await _teardown(tester);
+  });
+
+  testWidgets('menu opens the habit detail screen', (tester) async {
+    await _pumpApp(
+      tester,
+      habits: [
+        makeHabit(
+          id: 'run',
+          createdAt: DateTime.now().subtract(const Duration(days: 10)),
+        ),
+      ],
+    );
+
+    await tester.tap(find.byTooltip('More options'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View details'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Current streak'), findsOneWidget);
+    expect(find.text('Best streak'), findsOneWidget);
+    expect(find.text('Completion rate'), findsOneWidget);
     await _teardown(tester);
   });
 }

@@ -1,3 +1,5 @@
+import '../../core/date_utils.dart';
+
 /// A habit with a numeric daily target. A plain checkbox habit has
 /// [targetValue] == 1 and no unit.
 class Habit {
@@ -51,6 +53,16 @@ class Habit {
   bool get isArchived => archivedAt != null;
 
   bool isScheduledOn(DateTime day) => scheduleDays.contains(day.weekday);
+
+  /// Whether this habit counts on [day]: not deleted, on/after its creation
+  /// date, before it was archived, and on a scheduled weekday.
+  bool isTrackedOn(DateTime day) {
+    final d = dateOnly(day);
+    if (isDeleted) return false;
+    if (d.isBefore(dateOnly(createdAt))) return false;
+    if (archivedAt != null && !d.isBefore(dateOnly(archivedAt!))) return false;
+    return isScheduledOn(d);
+  }
 
   Habit copyWith({
     String? name,

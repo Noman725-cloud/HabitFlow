@@ -112,4 +112,31 @@ void main() {
       expect(d.scheduled, 0);
     });
   });
+
+  group('forMonth', () {
+    test('returns one entry per day of the month', () {
+      final days = calc.forMonth(
+        habits: [check, water],
+        entries: entries,
+        month: DateTime(2026, 10),
+        today: today,
+      );
+      expect(days, hasLength(31));
+      expect(days[0].scheduled, 2); // Oct 1, habits created that day
+      expect(days[0].met, 0);
+      expect(days[18].met, 2); // Oct 19
+      expect(days[19].met, 1); // Oct 20
+      expect(days[24].scheduled, 0); // Oct 25 is in the future
+    });
+
+    test('handles February in a non-leap year', () {
+      final days = calc.forMonth(
+        habits: const [],
+        entries: const [],
+        month: DateTime(2027, 2),
+        today: DateTime(2027, 3, 1),
+      );
+      expect(days, hasLength(28));
+    });
+  });
 }

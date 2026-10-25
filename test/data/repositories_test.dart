@@ -123,6 +123,22 @@ void main() {
     expect(byDate['2026-10-24']!.isMet, isFalse);
   });
 
+  test('watchAll includes archived but not deleted; watchArchived filters',
+      () async {
+    final a = makeHabit(id: 'a');
+    final b = makeHabit(id: 'b');
+    final c = makeHabit(id: 'c');
+    for (final h in [a, b, c]) {
+      await habits.create(h);
+    }
+    await habits.archive('b');
+    await habits.delete('c');
+
+    expect((await habits.watchAll().first).map((h) => h.id), ['a', 'b']);
+    expect((await habits.watchArchived().first).map((h) => h.id), ['b']);
+    expect((await habits.watchActive().first).map((h) => h.id), ['a']);
+  });
+
   test('watchRange is inclusive and watchForDate filters', () async {
     final h = makeHabit();
     await habits.create(h);

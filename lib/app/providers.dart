@@ -111,3 +111,45 @@ extension AsyncListOrEmpty<T> on AsyncValue<List<T>> {
         error: (_, _) => <T>[],
       );
 }
+
+// ------------------------------------------------------------ phase 3
+
+/// All non-deleted habits, including archived (history needs them).
+final allHabitsProvider = StreamProvider<List<Habit>>(
+  (ref) => ref.watch(habitRepositoryProvider).watchAll(),
+);
+
+final archivedHabitsProvider = StreamProvider<List<Habit>>(
+  (ref) => ref.watch(habitRepositoryProvider).watchArchived(),
+);
+
+/// Entries for a calendar month. Key must be the first day of the month.
+final entriesForMonthProvider =
+    StreamProvider.family<List<Entry>, DateTime>((ref, month) {
+  final first = DateTime(month.year, month.month, 1);
+  final last = DateTime(month.year, month.month + 1, 0);
+  return ref
+      .watch(entryRepositoryProvider)
+      .watchRange(toDateKey(first), toDateKey(last));
+});
+
+/// First day of the week: 1 = Monday .. 7 = Sunday.
+class WeekStartNotifier extends Notifier<int> {
+  static const _key = 'weekStartDay';
+
+  @override
+  int build() {
+    final saved = ref.watch(sharedPreferencesProvider).getInt(_key);
+    return (saved != null && saved >= 1 && saved <= 7)
+        ? saved
+        : DateTime.monday;
+  }
+
+  Future<void> set(int day) async {
+    state = day;
+    await ref.read(sharedPreferencesProvider).setInt(_key, day);
+  }
+}
+
+final weekStartProvider =
+    NotifierProvider<WeekStartNotifier, int>(WeekStartNotifier.new);
