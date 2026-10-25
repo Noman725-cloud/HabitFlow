@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../app/providers.dart';
+import '../../core/date_utils.dart';
 import '../../core/habit_icons.dart';
 import '../../domain/models/habit.dart';
 import 'habit_form_validators.dart';
@@ -41,6 +43,7 @@ class _HabitFormScreenState extends ConsumerState<HabitFormScreen> {
   int _color = habitColors.first;
   final Set<int> _days = {...Habit.everyDay};
   bool _counted = false;
+  DateTime _startDate = dateOnly(DateTime.now());
   Habit? _existing;
   bool _loading = false;
   bool _saving = false;
@@ -82,6 +85,7 @@ class _HabitFormScreenState extends ConsumerState<HabitFormScreen> {
       _days
         ..clear()
         ..addAll(habit.scheduleDays);
+      _startDate = dateOnly(habit.createdAt);
       _counted = habit.targetValue > 1;
       if (_counted) {
         _target.text = '${habit.targetValue}';
@@ -90,6 +94,18 @@ class _HabitFormScreenState extends ConsumerState<HabitFormScreen> {
       }
       _loading = false;
     });
+  }
+
+  Future<void> _pickStartDate() async {
+    final today = dateOnly(DateTime.now());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate.isAfter(today) ? today : _startDate,
+      firstDate: DateTime(today.year - 5),
+      lastDate: today,
+      helpText: 'Habit start date',
+    );
+    if (picked != null) setState(() => _startDate = dateOnly(picked));
   }
 
   Future<void> _save() async {
@@ -116,7 +132,7 @@ class _HabitFormScreenState extends ConsumerState<HabitFormScreen> {
         targetValue: target,
         unit: unit,
         step: step,
-        createdAt: now,
+        createdAt: _startDate,
         updatedAt: now,
       ));
     } else {
@@ -128,6 +144,7 @@ class _HabitFormScreenState extends ConsumerState<HabitFormScreen> {
         targetValue: target,
         unit: () => unit,
         step: step,
+        createdAt: _startDate,
       ));
     }
     if (mounted) context.pop();
@@ -275,6 +292,20 @@ class _HabitFormScreenState extends ConsumerState<HabitFormScreen> {
                         style: TextStyle(color: theme.colorScheme.error),
                       ),
                     ),
+                  const SizedBox(height: 24),
+                  Text('Start date', style: theme.textTheme.titleSmall),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _pickStartDate,
+                    icon: const Icon(Icons.event),
+                    label: Text(DateFormat.yMMMd().format(_startDate)),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Pick an earlier date to log days from before you '
+                    'created the habit.',
+                    style: theme.textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 24),
                   Text('Icon', style: theme.textTheme.titleSmall),
                   const SizedBox(height: 8),

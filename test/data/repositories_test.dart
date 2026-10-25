@@ -139,6 +139,13 @@ void main() {
     expect((await habits.watchActive().first).map((h) => h.id), ['a']);
   });
 
+  test('update can move the start date earlier', () async {
+    final h = makeHabit(createdAt: DateTime(2026, 10, 20));
+    await habits.create(h);
+    await habits.update(h.copyWith(createdAt: DateTime(2026, 10, 10)));
+    expect((await habits.getById(h.id))!.createdAt, DateTime(2026, 10, 10));
+  });
+
   test('watchRange is inclusive and watchForDate filters', () async {
     final h = makeHabit();
     await habits.create(h);

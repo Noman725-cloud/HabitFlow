@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../app/providers.dart';
 import '../../core/date_utils.dart';
@@ -246,7 +247,11 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
           MonthGrid(month: _month, weekStartDay: weekStart, cellBuilder: cell),
           const SizedBox(height: 8),
           Text(
-            'Tap a day to change it.',
+            _month.isBefore(dateOnly(habit.createdAt))
+                ? 'Tap a day to change it. To log days before '
+                    '${DateFormat.yMMMd().format(dateOnly(habit.createdAt))}, '
+                    'edit the habit and change its start date.'
+                : 'Tap a day to change it.',
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),
