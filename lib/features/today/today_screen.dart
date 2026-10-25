@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../app/providers.dart';
+import '../../core/animation.dart';
 import '../../core/date_utils.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/error_view.dart';
 import '../../domain/services/stats_calculator.dart';
 import 'habit_tile.dart';
 
@@ -27,14 +30,20 @@ class TodayScreen extends ConsumerWidget {
       ),
       body: habitsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text('Could not load habits.\n$e', textAlign: TextAlign.center),
-          ),
+        error: (e, _) => ErrorView(
+          message: 'Could not load your habits.',
+          onRetry: () => ref.invalidate(activeHabitsProvider),
         ),
         data: (habits) {
-          if (habits.isEmpty) return const _EmptyState();
+          if (habits.isEmpty) {
+            return EmptyState(
+              icon: Icons.spa_outlined,
+              title: 'No habits yet',
+              message: 'Create your first habit to start building a streak.',
+              actionLabel: 'Create habit',
+              onAction: () => context.push('/habit/new'),
+            );
+          }
 
           final due = habits.where((h) => h.isScheduledOn(today)).toList();
           final stats = const StatsCalculator().forDay(
@@ -94,37 +103,15 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(headline, style: theme.textTheme.titleLarge),
             const SizedBox(height: 12),
-            LinearProgressIndicator(
-              value: total == 0 ? 0 : met / total,
-              minHeight: 8,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.spa_outlined, size: 72, color: theme.colorScheme.primary),
-            const SizedBox(height: 16),
-            Text('No habits yet', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 8),
-            const Text(
-              'Create your first habit to start building a streak.',
-              textAlign: TextAlign.center,
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: total == 0 ? 0 : met / total),
+              duration: animDuration(context, 400),
+              curve: Curves.easeOut,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ],
         ),

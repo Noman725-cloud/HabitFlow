@@ -17,6 +17,7 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       appBarTheme: const AppBarTheme(centerTitle: false),
+      snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
     );
   }
 }

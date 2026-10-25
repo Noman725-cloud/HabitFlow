@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/animation.dart';
 import '../../domain/services/stats_calculator.dart';
 
 /// Seven bars, one per day. The solid part is the share of goals MET; the
@@ -20,24 +21,45 @@ class WeeklyBarChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 200,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          for (final d in days)
-            Expanded(
-              child: _Bar(
-                stats: d,
-                isToday: d.date == today,
-                isFuture: d.date.isAfter(today),
-                onTap: onDayTap,
+    // Seven narrow columns can't hold huge labels, so cap the text scale here.
+    return MediaQuery.withClampedTextScaling(
+      minScaleFactor: 1,
+      maxScaleFactor: 1.3,
+      child: SizedBox(
+        height: 200,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final d in days)
+              Expanded(
+                child: _Bar(
+                  stats: d,
+                  isToday: d.date == today,
+                  isFuture: d.date.isAfter(today),
+                  onTap: onDayTap,
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+Widget _fill(BuildContext context, double target, Color color) {
+  return Align(
+    alignment: Alignment.bottomCenter,
+    child: TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: target),
+      duration: animDuration(context, 500),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) => FractionallySizedBox(
+        heightFactor: value,
+        widthFactor: 1,
+        child: ColoredBox(color: color),
+      ),
+    ),
+  );
 }
 
 class _Bar extends StatelessWidget {
@@ -88,24 +110,9 @@ class _Bar extends StatelessWidget {
                         color: scheme.surfaceContainerHighest
                             .withValues(alpha: isFuture ? 0.4 : 1),
                       ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: FractionallySizedBox(
-                          heightFactor: progress,
-                          widthFactor: 1,
-                          child: ColoredBox(
-                            color: scheme.primary.withValues(alpha: 0.35),
-                          ),
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: FractionallySizedBox(
-                          heightFactor: rate,
-                          widthFactor: 1,
-                          child: ColoredBox(color: scheme.primary),
-                        ),
-                      ),
+                      _fill(context, progress,
+                          scheme.primary.withValues(alpha: 0.35)),
+                      _fill(context, rate, scheme.primary),
                     ],
                   ),
                 ),

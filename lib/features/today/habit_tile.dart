@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/providers.dart';
+import '../../core/animation.dart';
 import '../../core/date_utils.dart';
 import '../../core/habit_icons.dart';
+import '../../core/haptics.dart';
 import '../../domain/models/entry.dart';
 import '../../domain/models/habit.dart';
 import '../../domain/services/streak_calculator.dart';
@@ -34,12 +36,27 @@ class HabitTile extends ConsumerWidget {
   final DateTime? date;
   final bool showMenu;
 
-  Future<void> _setValue(WidgetRef ref, DateTime day, int value) {
-    return ref.read(entryRepositoryProvider).setValue(
-          habit: habit,
-          date: toDateKey(day),
-          value: value,
+  Future<void> _setValue(
+    BuildContext context,
+    WidgetRef ref,
+    DateTime day,
+    int value,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    tapFeedback();
+    try {
+      await ref.read(entryRepositoryProvider).setValue(
+            habit: habit,
+            date: toDateKey(day),
+            value: value,
+          );
+    } catch (_) {
+      messenger
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text('Could not save. Please try again.')),
         );
+    }
   }
 
   Future<void> _enterExact(
@@ -52,7 +69,9 @@ class HabitTile extends ConsumerWidget {
       context: context,
       builder: (_) => _ExactValueDialog(habit: habit, initial: current),
     );
-    if (value != null) await _setValue(ref, day, value);
+    if (value != null && context.mounted) {
+      await _setValue(context, ref, day, value);
+    }
   }
 
   void _openDetails(BuildContext context) =>
@@ -93,11 +112,16 @@ class HabitTile extends ConsumerWidget {
               alignment: Alignment.center,
               children: [
                 SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 4,
-                    color: color,
-                    backgroundColor: color.withValues(alpha: 0.2),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween<double>(end: progress),
+                    duration: animDuration(context),
+                    curve: Curves.easeOut,
+                    builder: (context, value, _) => CircularProgressIndicator(
+                      value: value,
+                      strokeWidth: 4,
+                      color: color,
+                      backgroundColor: color.withValues(alpha: 0.2),
+                    ),
                   ),
                 ),
                 Icon(
@@ -109,7 +133,7 @@ class HabitTile extends ConsumerWidget {
             ),
           )
         : AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+            duration: animDuration(context, 200),
             width: 44,
             height: 44,
             decoration: BoxDecoration(
@@ -134,95 +158,101 @@ class HabitTile extends ConsumerWidget {
       onTap = showMenu ? () => _openDetails(context) : null;
       onLongPress = () => _enterExact(context, ref, day, value);
     } else {
-      onTap = () => _setValue(ref, day, met ? 0 : 1);
+      onTap = () => _setValue(context, ref, day, met ? 0 : 1);
       onLongPress = showMenu ? () => _openDetails(context) : null;
     }
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(16, 12, showMenu ? 4 : 8, 12),
-          child: Row(
-            children: [
-              leading,
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(habit.name, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 2),
-                    Text(subtitle, style: theme.textTheme.bodyMedium),
-                    if (streak > 0) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.local_fire_department,
-                            size: 16,
-                            color: theme.colorScheme.tertiary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$streak day streak',
-                            style: theme.textTheme.labelMedium,
-                          ),
-                        ],
+    return Semantics(
+      container: true,
+      checked: counted ? null : met,
+      child: Card(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, showMenu ? 4 : 8, 12),
+            child: Row(
+              children: [
+                leading,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(habit.name, style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(subtitle, style: theme.textTheme.bodyMedium),
+                      if (streak > 0) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.local_fire_department,
+                              size: 16,
+                              color: theme.colorScheme.tertiary,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '$streak day streak',
+                                style: theme.textTheme.labelMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                if (counted) ...[
+                  IconButton(
+                    tooltip: 'Remove ${habit.step}',
+                    icon: const Icon(Icons.remove_circle_outline),
+                    onPressed: value <= 0
+                        ? null
+                        : () => _setValue(context, ref, day, value - habit.step),
+                  ),
+                  IconButton(
+                    tooltip: 'Add ${habit.step}',
+                    icon: const Icon(Icons.add_circle_outline),
+                    onPressed: () => _setValue(context, ref, day, value + habit.step),
+                  ),
+                ],
+                if (showMenu)
+                  PopupMenuButton<_TileAction>(
+                    tooltip: 'More options',
+                    onSelected: (action) {
+                      switch (action) {
+                        case _TileAction.details:
+                          _openDetails(context);
+                        case _TileAction.edit:
+                          context.push('/habit/${habit.id}/edit');
+                        case _TileAction.archive:
+                          archiveHabit(ref, ScaffoldMessenger.of(context), habit);
+                        case _TileAction.delete:
+                          deleteHabit(ref, ScaffoldMessenger.of(context), habit);
+                      }
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: _TileAction.details,
+                        child: Text('View details'),
+                      ),
+                      PopupMenuItem(value: _TileAction.edit, child: Text('Edit')),
+                      PopupMenuItem(
+                        value: _TileAction.archive,
+                        child: Text('Archive'),
+                      ),
+                      PopupMenuItem(
+                        value: _TileAction.delete,
+                        child: Text('Delete'),
                       ),
                     ],
-                  ],
-                ),
-              ),
-              if (counted) ...[
-                IconButton(
-                  tooltip: 'Remove ${habit.step}',
-                  icon: const Icon(Icons.remove_circle_outline),
-                  onPressed: value <= 0
-                      ? null
-                      : () => _setValue(ref, day, value - habit.step),
-                ),
-                IconButton(
-                  tooltip: 'Add ${habit.step}',
-                  icon: const Icon(Icons.add_circle_outline),
-                  onPressed: () => _setValue(ref, day, value + habit.step),
-                ),
+                  ),
               ],
-              if (showMenu)
-                PopupMenuButton<_TileAction>(
-                  tooltip: 'More options',
-                  onSelected: (action) {
-                    switch (action) {
-                      case _TileAction.details:
-                        _openDetails(context);
-                      case _TileAction.edit:
-                        context.push('/habit/${habit.id}/edit');
-                      case _TileAction.archive:
-                        archiveHabit(ref, ScaffoldMessenger.of(context), habit);
-                      case _TileAction.delete:
-                        deleteHabit(ref, ScaffoldMessenger.of(context), habit);
-                    }
-                  },
-                  itemBuilder: (_) => const [
-                    PopupMenuItem(
-                      value: _TileAction.details,
-                      child: Text('View details'),
-                    ),
-                    PopupMenuItem(value: _TileAction.edit, child: Text('Edit')),
-                    PopupMenuItem(
-                      value: _TileAction.archive,
-                      child: Text('Archive'),
-                    ),
-                    PopupMenuItem(
-                      value: _TileAction.delete,
-                      child: Text('Delete'),
-                    ),
-                  ],
-                ),
-            ],
+            ),
           ),
         ),
       ),

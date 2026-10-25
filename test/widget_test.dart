@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:habitflow/app/app.dart';
 import 'package:habitflow/app/providers.dart';
 import 'package:habitflow/core/date_utils.dart';
+import 'package:habitflow/core/widgets/error_view.dart';
 import 'package:habitflow/domain/models/entry.dart';
 import 'package:habitflow/domain/models/habit.dart';
 import 'package:intl/intl.dart';
@@ -234,6 +235,72 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.text('Create a habit to see your statistics.'), findsOneWidget);
+    await _teardown(tester);
+  });
+
+  testWidgets('ErrorView shows its message and retries', (tester) async {
+    var retries = 0;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: ErrorView(message: 'Oops', onRetry: () => retries++),
+      ),
+    ));
+    expect(find.text('Oops'), findsOneWidget);
+    await tester.tap(find.text('Try again'));
+    expect(retries, 1);
+  });
+
+  testWidgets('a failed save shows a message instead of crashing',
+      (tester) async {
+    final entryRepo = FakeEntryRepository()..failWrites = true;
+    await _pumpApp(
+      tester,
+      habits: [makeHabit(id: 'run')],
+      entryRepo: entryRepo,
+    );
+
+    await tester.tap(find.text('Habit run'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Could not save. Please try again.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _teardown(tester);
+  });
+
+  testWidgets('Today tiles do not overflow on a narrow screen with big text',
+      (tester) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(360, 800);
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final now = DateTime.now();
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+    final created = now.subtract(const Duration(days: 40));
+    Entry done(DateTime d) => Entry(
+          id: 'e-${toDateKey(d)}',
+          habitId: 'water',
+          date: toDateKey(d),
+          value: 8,
+          target: 8,
+          updatedAt: now,
+        );
+
+    await _pumpApp(
+      tester,
+      habits: [
+        makeHabit(id: 'water', target: 8, createdAt: created)
+            .copyWith(unit: () => 'glasses'),
+        makeHabit(id: 'run', createdAt: created),
+      ],
+      entryRepo: FakeEntryRepository([done(now), done(yesterday)]),
+    );
+
+    expect(find.text('Habit water'), findsOneWidget);
+    expect(find.textContaining('day streak'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await _teardown(tester);
   });
 }

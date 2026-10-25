@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../app/providers.dart';
 import '../../core/habit_icons.dart';
 import '../../core/schedule_label.dart';
+import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/error_view.dart';
 import '../shared/habit_actions.dart';
 
 class ArchivedScreen extends ConsumerWidget {
@@ -17,18 +19,17 @@ class ArchivedScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Archived habits')),
       body: habitsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Could not load habits.\n$e')),
+        error: (e, _) => ErrorView(
+          message: 'Could not load archived habits.',
+          onRetry: () => ref.invalidate(archivedHabitsProvider),
+        ),
         data: (habits) {
           if (habits.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text(
-                  'Nothing here. Archive a habit to hide it from Today '
-                  'without losing its history.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            return const EmptyState(
+              icon: Icons.archive_outlined,
+              title: 'No archived habits',
+              message: 'Archive a habit to hide it from Today without '
+                  'losing its history.',
             );
           }
           return ListView(

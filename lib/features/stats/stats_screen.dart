@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../app/providers.dart';
 import '../../core/date_utils.dart';
 import '../../core/habit_icons.dart';
+import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/stat_card.dart';
 import '../../domain/models/habit.dart';
 import '../../domain/services/stats_calculator.dart';
@@ -59,14 +60,12 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         ],
       ),
       body: habits.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: Text(
-                  'Create a habit to see your statistics.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
+          ? EmptyState(
+              icon: Icons.bar_chart,
+              title: 'No statistics yet',
+              message: 'Create a habit to see your statistics.',
+              actionLabel: 'Create habit',
+              onAction: () => context.push('/habit/new'),
             )
           : ListView(
               padding: const EdgeInsets.all(16),

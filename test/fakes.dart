@@ -70,6 +70,9 @@ class FakeEntryRepository implements EntryRepository {
 
   final List<Entry> entries;
 
+  /// When true, setValue throws (to test error handling in the UI).
+  bool failWrites = false;
+
   /// Every setValue call, in order, for assertions.
   final List<({String habitId, String date, int value})> calls = [];
 
@@ -95,6 +98,7 @@ class FakeEntryRepository implements EntryRepository {
     required String date,
     required int value,
   }) async {
+    if (failWrites) throw Exception('disk full');
     calls.add((habitId: habit.id, date: date, value: value));
   }
 }

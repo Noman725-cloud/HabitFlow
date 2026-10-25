@@ -8,6 +8,7 @@ import '../../core/date_utils.dart';
 import '../../core/habit_icons.dart';
 import '../../core/schedule_label.dart';
 import '../../core/widgets/day_cell.dart';
+import '../../core/widgets/error_view.dart';
 import '../../core/widgets/month_grid.dart';
 import '../../core/widgets/stat_card.dart';
 import '../../domain/models/habit.dart';
@@ -43,7 +44,10 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
       ),
       error: (e, _) => Scaffold(
         appBar: AppBar(),
-        body: Center(child: Text('Could not load this habit.\n$e')),
+        body: ErrorView(
+          message: 'Could not load this habit.',
+          onRetry: () => ref.invalidate(allHabitsProvider),
+        ),
       ),
       data: (habits) {
         Habit? habit;
@@ -106,12 +110,20 @@ class _HabitDetailScreenState extends ConsumerState<HabitDetailScreen> {
           foreground = scheme.onSurface.withValues(alpha: 0.25);
       }
       final tappable = status != DayStatus.notTracked && !day.isAfter(today);
+      final statusLabel = switch (status) {
+        DayStatus.met => 'goal met',
+        DayStatus.partial => 'partly done',
+        DayStatus.missed => 'missed',
+        DayStatus.pending => 'not yet done',
+        DayStatus.notTracked => 'not scheduled',
+      };
       return DayCell(
         day: day.day,
         background: background,
         foreground: foreground,
         outlined: outlined,
         isToday: day == today,
+        semanticsLabel: '${DateFormat('MMMM d').format(day)}: $statusLabel',
         onTap: tappable
             ? () => showDayEditor(context, date: day, onlyHabitId: habit.id)
             : null,

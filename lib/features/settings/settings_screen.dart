@@ -64,6 +64,17 @@ class SettingsScreen extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push('/archived'),
           ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.info_outline),
+            title: const Text('About HabitFlow'),
+            onTap: () => showAboutDialog(
+              context: context,
+              applicationName: 'HabitFlow',
+              applicationVersion: '1.0.0',
+              applicationLegalese: 'An offline-first habit tracker.',
+            ),
+          ),
         ],
       ),
     );
